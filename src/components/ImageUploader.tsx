@@ -2,7 +2,9 @@ import React, { useState } from "react";
 import ImageUploading from "react-images-uploading";
 import type { ImageListType } from "react-images-uploading";
 
-const API_ENDPOINT = "https://your-api-url.com/classify"; // 🔧 Update this when ready
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const API_ENDPOINT = `${API_BASE_URL}/predict`;
 
 const ImageUploader: React.FC = () => {
   const [images, setImages] = useState<ImageListType>([]);
@@ -12,54 +14,60 @@ const ImageUploader: React.FC = () => {
     description: string;
   }>(null);
 
-  const onChange = (imageList: ImageListType) => {
+  const onChange = async (imageList: ImageListType) => {
     setImages(imageList);
     setApiResponse(null);
 
-    if (imageList.length > 0) {
-      setLoading(true);
+    if (imageList.length === 0) return;
 
-      // -------- 🟡 MOCK LOGIC: Simulate API Response --------
-      setTimeout(() => {
-        setApiResponse({
-          title: "Plastic Bottle",
-          description: "This item belongs to the Plastic category.",
-        });
-        setLoading(false);
-      }, 2000);
+    const file = imageList[0].file;
+    if (!file) {
+      setApiResponse({
+        title: "Erro",
+        description: "Não foi possível ler a imagem selecionada.",
+      });
+      return;
+    }
 
-      // -------- 🟢 REAL API LOGIC: Uncomment when backend is ready --------
-      /*
+    setLoading(true);
+
+    try {
       const formData = new FormData();
-      formData.append("image", imageList[0].file);
+      formData.append("image", file);
 
-      fetch(API_ENDPOINT, {
+      const res = await fetch(API_ENDPOINT, {
         method: "POST",
         body: formData,
-      })
-        .then((res) => {
-          if (!res.ok) {
-            throw new Error("Server error");
-          }
-          return res.json();
-        })
-        .then((data) => {
-          setApiResponse({
-            title: data.title || "Classification Result",
-            description: data.description || "This item was classified successfully.",
-          });
-        })
-        .catch((error) => {
-          console.error("API error:", error);
-          setApiResponse({
-            title: "Error",
-            description: "There was a problem processing the image.",
-          });
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-      */
+      });
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      // Ajusta aqui de acordo com o payload do teu backend.
+      // Ex.: { label: "Plastic", confidence: 0.92, description?: string }
+      const data = await res.json();
+
+      const title =
+        data.title ??
+        data.label ??
+        "Resultado da Classificação";
+      const description =
+        data.description ??
+        (typeof data.confidence === "number"
+          ? `Confiança: ${(data.confidence * 100).toFixed(1)}%`
+          : "Item classificado com sucesso.");
+
+      setApiResponse({ title, description });
+    } catch (error) {
+      console.error("API error:", error);
+      setApiResponse({
+        title: "Erro",
+        description:
+          "Ocorreu um problema ao processar a imagem. Verifica o backend e o CORS.",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -138,7 +146,7 @@ const styles = {
   title: {
     fontSize: "2rem",
     marginBottom: "30px",
-    color: "#7c3aed", // purple
+    color: "#7c3aed",
   },
   uploadWrapper: {
     marginBottom: "20px",
@@ -177,8 +185,8 @@ const styles = {
     marginTop: "20px",
     padding: "10px 20px",
     fontSize: "1rem",
-    background: "#bfdbfe", // pastel blue
-    color: "#1e3a8a", // navy blue text
+    background: "#bfdbfe",
+    color: "#1e3a8a",
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",
