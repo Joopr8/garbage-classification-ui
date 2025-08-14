@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import ImageUploading from "react-images-uploading";
 import type { ImageListType, ErrorsType } from "react-images-uploading";
 
-const API_ENDPOINT = "https://c04b3f94c594.ngrok-free.app/predict"; // atualiza se mudar
+// const API_ENDPOINT = "https://c04b3f94c594.ngrok-free.app/predict"; // ← removido
 const MAX_SIZE_BYTES = 8 * 1024 * 1024; // 8MB (ajusta se quiseres)
 const ACCEPT_TYPES = ["jpg", "jpeg", "png", "webp"]; // evita HEIC/HEIF
 
@@ -16,7 +16,10 @@ const ImageUploader: React.FC = () => {
     const formData = new FormData();
     formData.append("file", file, file.name || "upload.jpg"); // ⚠️ campo "file" p/ FastAPI
 
-    const res = await fetch(API_ENDPOINT, { method: "POST", body: formData });
+    const res = await fetch("https://c04b3f94c594.ngrok-free.app/predict", {
+      method: "POST",
+      body: formData,
+    });
     const bodyText = await res.text(); // API devolve só o nome (texto)
     if (!res.ok) throw new Error(bodyText || `HTTP ${res.status}`);
     return bodyText.trim();
@@ -58,7 +61,7 @@ const ImageUploader: React.FC = () => {
     }
   };
 
-  // Captura erros DO COMPONENTE (inclui "loadImageError" -> o teu "ERROR LOAD FAILED")
+  // Captura erros DO COMPONENTE (inclui "loadImageError")
   const onError = (errors: ErrorsType) => {
     console.warn("Uploader errors:", errors);
     if (errors.loadImageError) setError("Não foi possível carregar a imagem (ficheiro corrompido ou formato não suportado).");
@@ -86,7 +89,7 @@ const ImageUploader: React.FC = () => {
         onError={onError}
         dataURLKey="data_url"
         maxFileSize={MAX_SIZE_BYTES}
-        acceptType={ACCEPT_TYPES}            // bloqueia HEIC/HEIF por ex.
+        acceptType={ACCEPT_TYPES}
         inputProps={{ accept: "image/jpeg,image/png,image/webp" }}
       >
         {({ imageList, onImageUpload }) => (
@@ -98,7 +101,12 @@ const ImageUploader: React.FC = () => {
             )}
             {imageList.map((image, index) => (
               <div key={index} style={styles.imagePreview}>
-                <img src={image.data_url} alt="preview" style={styles.image} onError={() => setError("Não foi possível pré-visualizar a imagem.")} />
+                <img
+                  src={image.data_url}
+                  alt="preview"
+                  style={styles.image}
+                  onError={() => setError("Não foi possível pré-visualizar a imagem.")}
+                />
               </div>
             ))}
           </div>
